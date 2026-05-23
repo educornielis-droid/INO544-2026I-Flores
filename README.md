@@ -5,52 +5,51 @@
 ---
 
 ## 👥 Integrantes y Roles
-* **Integrante 1:** [Nombre Completo] - [Cédula] - *Rol: Ingeniero de Datos (Dataset y Preprocesamiento)*
-* **Integrante 2:** [Nombre Completo] - [Cédula] - *Rol: Arquitecto de IA (Modelado y Entrenamiento)*
-* **Integrante 3:** [Nombre Completo] - [Cédula] - *Rol: Ingeniero de Despliegue (Exportación ONNX y Pruebas)*
+* **Estudiante 1:** [Eduardo Cornielis] - [30.908.425] - Modelado y Entrenamiento (el que trabajó con el código del modelo)
+* **Estudiante 2:** [Cesar Nucete] - [29.548.403] - Dataset y Preprocesamiento (el que buscó y organizó las imágenes)
+* **Estudiante 3:** [Andrea Melchor] - [31.170.328] - Pruebas (probó el modelo)
 
 ---
 
 ## 🎯 1. Clase/Tema Seleccionado
-* **Tema asignado:** [Ej. Motos / Árboles / Vidrio / Flores]
-* **Descripción del Objeto:** Breve explicación de qué características visuales definen al objeto seleccionado para este modelo.
-
+* **Tema asignado:** [Flores]
+* **Descripción del Objeto:** Las flores se caracterizan visualmente por pétalos de colores vivos y variados (rojos, amarillos, morados, blancos), formas simétricas y radiales, texturas orgánicas suaves, y centros circulares bien definidos. El modelo aprendió a distinguir estas características de objetos sin estas propiedades.
 ---
 
 ## 📊 2. Gestión del Dataset (Ingeniería de Datos)
-* **Cantidad de imágenes originales recopiladas:** [Número exacto, mín. 200]
-* **Estrategia de Data Augmentation aplicada:**
-    * *Rotación:* [Rango de grados]
-    * *Zoom:* [Porcentaje]
-    * *Cambios de Brillo:* [Rango]
-    * *Otras transformaciones:* [Explicar brevemente]
-* **Total de imágenes generadas para el entrenamiento:** [Número total después de la aumentación]
-* **Resolución y formato estandarizado:** 224x224 píxeles, JPG, canales RGB (Formato Tensor: `[1, 224, 224, 3]`).
+* **Cantidad de imágenes originales recopiladas:** 400 (200 flores + 200 no-flores)
+* **Estrategia de Data Augmentation aplicada:** El modelo no aplicó augmentation explícita debiido a que usó las imágenes originales del dataset de TensorFlow (flower_photos) tal como estaban.
+    * *Rotación:* [No aplicada] 
+    * *Zoom:* [No aplicado]
+    * *Cambios de Brillo:* [No aplicados]
+    * *Otras transformaciones:* [No aplicadas]
+* **Total de imágenes generadas para el entrenamiento:** [400 (las mismas 400 originales, sin aumentación)]
+* **Resolución y formato estandarizado:** 224x224 píxeles, RGB.
 
 ---
 
 ## 🧠 3. Arquitectura del Modelo y Entrenamiento
-* **Framework utilizado:** [TensorFlow/Keras o PyTorch]
-* **Descripción de la Red (CNN):** [Explicar brevemente cuántas capas convolucionales, de pooling y densas se utilizaron].
+* **Framework utilizado:** [TensorFlow/Keras]
+* **Descripción de la Red (CNN):** [Se usó MobileNetV2 como base convolucional preentrenada (congelada), seguida de una capa GlobalAveragePooling2D, una capa densa de 64 neuronas con activación ReLU, una capa Dropout del 30%, y una capa de salida densa de 1 neurona con activación Sigmoid.]. 
 * **Hiperparámetros óptimos seleccionados:**
-    * *Función de pérdida (Loss):* [Ej. Binary Crossentropy]
-    * *Optimizador:* [Ej. Adam / SGD]
-    * *Tasa de Aprendizaje (Learning Rate):* [Ej. 0.001]
-    * *Épocas (Epochs):* [Número]
-    * *Tamaño de lote (Batch Size):* [Número]
+    * *Función de pérdida (Loss):* [Binary Crossentropy] 
+    * *Optimizador:* [Adam]
+    * *Tasa de Aprendizaje (Learning Rate):* [0.001]
+    * *Épocas (Epochs):* [10]
+    * *Tamaño de lote (Batch Size):* [4]
 
 ### 💡 Justificación Crítica (Control de Autoría)
-*Explique detalladamente por qué el equipo eligió esa Tasa de Aprendizaje (Learning Rate) específica y el impacto que tuvo en las gráficas de pérdida durante el laboratorio:*
-> [Escribir aquí la respuesta analítica del equipo. Evite respuestas genéricas generadas por IA].
+*Explique detalladamente por qué el equipo eligió esa Tasa de Aprendizaje (Learning Rate) específica y el impacto que tuvo en las gráficas de pérdida durante el laboratorio:* 
+> [Escribir aquí la respuesta analítica del equipo. Evite respuestas genéricas generadas por IA]. ------------
 
 ---
 
 ## 📈 4. Métricas de Rendimiento (Testing - 20%)
-* **Precisión final (Accuracy) en la data de test:** [Ej. 92.4%]
-* **Pérdida final (Loss) en la data de test:** [Ej. 0.15]
+* **Precisión final (Accuracy) en la data de test:** [100%]
+* **Pérdida final (Loss) en la data de test:** [0.0000]
 
 *(Inserte aquí abajo la captura de pantalla de la gráfica de entrenamiento Accuracy/Loss de su modelo)*
-![Gráfica de Entrenamiento](src/grafica_rendimiento.png)
+![Gráfica de Entrenamiento](src/grafica_rendimiento.png) ---------------
 
 ---
 
