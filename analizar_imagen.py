@@ -2,23 +2,20 @@
 analizar_imagen.py
 ------------------
 Carga el modelo ONNX y analiza UNA imagen para determinar
-si es o no una flor. Muestra:
-  - Estado: "Reconocido ✅" / "No reconocido ❌"
-  - Confianza máxima (%)
-  - Justificación textual
+si es o no una flor. CORREGIDO para que coincida con camara_en_vivo.py
 
 Uso:
     python analizar_imagen.py ruta/a/imagen.jpg
     python analizar_imagen.py                    ← abre diálogo de selección
 """
 
-import sys, textwrap
+import sys
+import textwrap
 import numpy as np
 from PIL import Image
 import onnxruntime as ort
 
-# ── Umbral de decisión (según pizarra: rango 0.0–1.0) ─────────────
-UMBRAL          = 0.5
+# ── Configuración ─────────────────────────────────────────────────
 IMG_SIZE        = 224
 MODEL_PATH      = "modelo_flores.onnx"
 INPUT_NAME      = "cam_input"
@@ -28,45 +25,32 @@ OUTPUT_NAME     = "confidence_score"
 def cargar_imagen(ruta: str) -> np.ndarray:
     """Carga y preprocesa la imagen para la CNN."""
     img = Image.open(ruta).convert("RGB").resize((IMG_SIZE, IMG_SIZE))
-    arr = np.array(img, dtype="float32") / 255.0          # normalizar [0,1]
-    return arr[np.newaxis, ...]                            # shape [1,224,224,3]
+    arr = np.array(img, dtype="float32") / 255.0
+    return arr[np.newaxis, ...]
 
 
-def justificar(confianza: float, es_flor: bool) -> str:
+def justificar(confianza_corregida: float, es_flor: bool) -> str:
     """Genera una justificación textual según el nivel de confianza."""
-    pct = confianza * 100
+    pct = confianza_corregida * 100
     if es_flor:
         if pct >= 90:
-            return (f"El modelo detectó con muy alta confianza ({pct:.1f}%) "
-                    "características visuales típicas de flores: pétalos, "
-                    "colores vivos y texturas orgánicas simétricas.")
+            return f"El modelo detectó con muy alta confianza ({pct:.1f}%) que la imagen ES una flor."
         elif pct >= 70:
-            return (f"Con confianza moderada-alta ({pct:.1f}%), el modelo "
-                    "identificó rasgos compatibles con flores (formas curvas, "
-                    "paleta cromática floral), aunque la imagen puede tener "
-                    "algo de ruido visual.")
+            return f"Con confianza moderada-alta ({pct:.1f}%), la imagen probablemente ES una flor."
         else:
-            return (f"El modelo clasificó la imagen como flor ({pct:.1f}%), "
-                    "pero con confianza baja. La imagen podría ser ambigua "
-                    "o de baja calidad. Se supera el umbral ({UMBRAL*100:.0f}%).")
+            return f"La imagen fue clasificada como flor ({pct:.1f}%) pero con confianza baja. El umbral es 50%."
     else:
         if pct <= 10:
-            return (f"El modelo descartó con altísima certeza ({100-pct:.1f}% "
-                    "de confianza de no-flor) que la imagen contenga flores. "
-                    "No se detectaron pétalos, formas florales ni colores "
-                    "característicos.")
+            return f"El modelo determinó con altísima certeza ({100-pct:.1f}%) que la imagen NO ES una flor."
         elif pct <= 30:
-            return (f"El modelo no reconoció la imagen como flor "
-                    f"(confianza flor: {pct:.1f}%). Las características "
-                    "visuales presentes no coinciden con patrones florales.")
+            return f"El modelo NO reconoció la imagen como flor (confianza flor: {pct:.1f}%)."
         else:
-            return (f"La imagen quedó cerca del umbral (confianza flor: "
-                    f"{pct:.1f}%), pero no lo superó ({UMBRAL*100:.0f}%). "
-                    "Puede haber colores o formas similares a flores, pero "
-                    "el modelo las descartó.")
+            return f"La imagen NO superó el umbral (confianza flor: {pct:.1f}%). El umbral es 50%."
 
 
 def analizar(ruta_imagen: str):
+    print(f"\n📷 Cargando imagen: {ruta_imagen}")
+    
     # Cargar modelo ONNX
     session = ort.InferenceSession(MODEL_PATH)
 
@@ -74,23 +58,27 @@ def analizar(ruta_imagen: str):
     img_array = cargar_imagen(ruta_imagen)
 
     # Inferencia
-    outputs = session.run(
-        [OUTPUT_NAME],
-        {INPUT_NAME: img_array}
-    )
-    confianza = float(outputs[0][0][0])   # valor float32 entre 0 y 1
+    outputs = session.run([OUTPUT_NAME], {INPUT_NAME: img_array})
+    confianza_original = float(outputs[0][0][0])
+    
+    # ========== MISMA LÓGICA QUE camara_en_vivo.py ==========
+    # Invertir la confianza (porque el modelo entrenó al revés)
+    confianza_corregida = 1.0 - confianza_original
+    es_flor = confianza_corregida >= 0.5
+    # ========================================================
+    
+    justif = justificar(confianza_corregida, es_flor)
 
-    es_flor   = confianza >= UMBRAL
-    estado    = "✅ RECONOCIDO (es una flor)" if es_flor else "❌ NO RECONOCIDO (no es una flor)"
-    justif    = justificar(confianza, es_flor)
-
-    # ── Mostrar resultado ─────────────────────────────────────────
+    # Mostrar resultado
     separador = "─" * 55
-    print(f"\n{separador}")
+    estado = "✅ RECONOCIDO (es una flor)" if es_flor else "❌ NO RECONOCIDO (no es una flor)"
+    
+    print(f"{separador}")
     print(f"  Imagen analizada : {ruta_imagen}")
     print(f"  Estado           : {estado}")
-    print(f"  Confianza        : {confianza * 100:.2f}%")
-    print(f"  Umbral usado     : {UMBRAL * 100:.0f}%")
+    print(f"  Confianza modelo : {confianza_original * 100:.2f}%")
+    print(f"  Confianza real   : {confianza_corregida * 100:.2f}%")
+    print(f"  Umbral usado     : 50%")
     print(f"  Justificación    :")
     print(textwrap.fill(f"    {justif}", width=55))
     print(f"{separador}\n")
@@ -101,7 +89,6 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         ruta = sys.argv[1]
     else:
-        # Si no se pasa ruta por argumento, abrir diálogo gráfico
         try:
             import tkinter as tk
             from tkinter import filedialog

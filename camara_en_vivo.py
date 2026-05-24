@@ -5,6 +5,8 @@ Activa la cámara de la PC y clasifica en tiempo real si lo que
 se ve es o no una flor. Muestra el resultado superpuesto sobre
 el video con OpenCV.
 
+Versión simplificada - Corregida para modelos invertidos
+
 Controles:
     Q  → salir
     S  → guardar captura de pantalla
@@ -20,8 +22,7 @@ MODEL_PATH   = "modelo_flores.onnx"
 INPUT_NAME   = "cam_input"
 OUTPUT_NAME  = "confidence_score"
 IMG_SIZE     = 224
-UMBRAL       = 0.5
-CAMERA_INDEX = 0   # 0 = primera cámara disponible
+CAMERA_INDEX = 0
 
 
 def preprocesar_frame(frame: np.ndarray) -> np.ndarray:
@@ -32,21 +33,26 @@ def preprocesar_frame(frame: np.ndarray) -> np.ndarray:
     return arr[np.newaxis, ...]   # [1, 224, 224, 3]
 
 
-def dibujar_resultado(frame, confianza: float):
-    """Superpone el resultado sobre el frame de video."""
-    es_flor = confianza >= UMBRAL
-    pct     = confianza * 100
+def dibujar_resultado(frame, confianza_original: float):
+    """
+    Superpone el resultado sobre el frame de video.
+    Invierte automáticamente la confianza porque el modelo entrenó al revés.
+    """
+    # INVERTIR la confianza (porque el modelo aprendió al revés)
+    confianza_corregida = 1.0 - confianza_original
+    es_flor = confianza_corregida >= 0.5
+    pct = confianza_corregida * 100
 
     # Colores: verde = flor | rojo = no flor
-    color      = (0, 200, 0) if es_flor else (0, 0, 220)
-    etiqueta   = "RECONOCIDO - ES FLOR" if es_flor else "NO RECONOCIDO"
-    confianza_texto = f"Confianza: {pct:.1f}%  |  Umbral: {UMBRAL*100:.0f}%"
+    color = (0, 200, 0) if es_flor else (0, 0, 220)
+    etiqueta = "🌼 ES FLOR" if es_flor else "❌ NO ES FLOR"
+    confianza_texto = f"Confianza: {pct:.1f}%"
 
     h, w = frame.shape[:2]
 
     # Fondo semitransparente en la parte superior
     overlay = frame.copy()
-    cv2.rectangle(overlay, (0, 0), (w, 90), (0, 0, 0), -1)
+    cv2.rectangle(overlay, (0, 0), (w, 80), (0, 0, 0), -1)
     cv2.addWeighted(overlay, 0.55, frame, 0.45, 0, frame)
 
     # Texto principal
@@ -55,14 +61,14 @@ def dibujar_resultado(frame, confianza: float):
 
     # Texto de confianza
     cv2.putText(frame, confianza_texto,
-                (15, 72), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (220, 220, 220), 1, cv2.LINE_AA)
+                (15, 68), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (220, 220, 220), 1, cv2.LINE_AA)
 
     # Barra de confianza
-    barra_x   = 15
-    barra_y   = 85
-    barra_w   = int((w - 30) * confianza)
-    cv2.rectangle(frame, (barra_x, barra_y), (w - 15, barra_y + 6), (60, 60, 60), -1)
-    cv2.rectangle(frame, (barra_x, barra_y), (barra_x + barra_w, barra_y + 6), color, -1)
+    barra_x = 15
+    barra_y = 80
+    barra_w = int((w - 30) * confianza_corregida)
+    cv2.rectangle(frame, (barra_x, barra_y), (w - 15, barra_y + 8), (60, 60, 60), -1)
+    cv2.rectangle(frame, (barra_x, barra_y), (barra_x + barra_w, barra_y + 8), color, -1)
 
     # Instrucciones en la parte inferior
     cv2.putText(frame, "Q: Salir  |  S: Guardar captura",
@@ -72,11 +78,19 @@ def dibujar_resultado(frame, confianza: float):
 
 
 def main():
+    print("=" * 50)
     print("🔌 Cargando modelo ONNX...")
-    session = ort.InferenceSession(MODEL_PATH)
-    print("✅ Modelo cargado")
+    print("   (esto puede tardar unos segundos)")
+    
+    try:
+        session = ort.InferenceSession(MODEL_PATH)
+        print("✅ Modelo cargado correctamente")
+    except Exception as e:
+        print(f"❌ Error al cargar el modelo: {e}")
+        print(f"   Verifica que '{MODEL_PATH}' existe en la carpeta")
+        return
 
-    print(f"📷 Abriendo cámara (índice {CAMERA_INDEX})...")
+    print(f"\n📷 Abriendo cámara (índice {CAMERA_INDEX})...")
     cap = cv2.VideoCapture(CAMERA_INDEX)
 
     if not cap.isOpened():
@@ -84,10 +98,15 @@ def main():
         print("   Verificá que la cámara esté conectada y no esté en uso por otra app.")
         return
 
-    print("✅ Cámara activa. Mostrando ventana de video...")
-    print("   Presioná Q para salir, S para guardar una captura.\n")
-
-    confianza = 0.0   # valor inicial
+    print("✅ Cámara activa")
+    print("\n" + "=" * 50)
+    print("🎯 Detector de Flores - Modo simplificado")
+    print("   • Modelo con corrección automática (inversión de confianza)")
+    print("   • Apunta a una flor para probar")
+    print("\n⌨️  Controles:")
+    print("   Q → Salir")
+    print("   S → Guardar captura")
+    print("=" * 50 + "\n")
 
     while True:
         ret, frame = cap.read()
@@ -96,21 +115,21 @@ def main():
             break
 
         # Clasificar cada frame
-        entrada   = preprocesar_frame(frame)
-        outputs   = session.run([OUTPUT_NAME], {INPUT_NAME: entrada})
-        confianza = float(outputs[0][0][0])
+        entrada = preprocesar_frame(frame)
+        outputs = session.run([OUTPUT_NAME], {INPUT_NAME: entrada})
+        confianza_original = float(outputs[0][0][0])
+        
+        # Dibujar resultado (la corrección se hace dentro de la función)
+        frame_con_resultado = dibujar_resultado(frame.copy(), confianza_original)
 
-        # Dibujar resultado sobre el frame
-        frame_con_resultado = dibujar_resultado(frame.copy(), confianza)
-
-        cv2.imshow("Detector de Flores — Cámara en Vivo", frame_con_resultado)
+        cv2.imshow("Detector de Flores", frame_con_resultado)
 
         tecla = cv2.waitKey(1) & 0xFF
         if tecla == ord("q") or tecla == ord("Q"):
             print("👋 Cerrando cámara...")
             break
         elif tecla == ord("s") or tecla == ord("S"):
-            nombre = f"captura_{datetime.now().strftime('%H%M%S')}.jpg"
+            nombre = f"captura_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
             cv2.imwrite(nombre, frame_con_resultado)
             print(f"📸 Captura guardada como '{nombre}'")
 
