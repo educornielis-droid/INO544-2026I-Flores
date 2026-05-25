@@ -1,107 +1,114 @@
 """
-servidor.py
------------
-Servidor web local que conecta la interfaz HTML con el modelo ONNX.
-
-Uso:
-    python servidor.py
-    
-Luego abre en el navegador: http://localhost:5000
+servidor.py - usa onnxruntime 1.10.0 compatible con Windows 7
 """
 
-import base64, io, json, os
+import base64, io, json
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import numpy as np
 from PIL import Image
 import onnxruntime as ort
+import warnings
+warnings.filterwarnings("ignore")
 
-# ── Configuración ─────────────────────────────────────────────────
-PUERTO      = 5000
-IMG_SIZE    = 224
-UMBRAL      = 0.5
-MODEL_PATH  = "modelo_flores.onnx"
+PUERTO     = 5000
+IMG_SIZE   = 224
+UMBRAL     = 0.5
+MODEL_PATH = "modelo_flores.onnx"
+HTML_FILE  = "interfaz_flores.html"
 INPUT_NAME  = "cam_input"
 OUTPUT_NAME = "confidence_score"
-HTML_FILE   = "interfaz_flores.html"
 
-# ── Cargar modelo al iniciar ───────────────────────────────────────
 print("🔌 Cargando modelo ONNX...")
-session = ort.InferenceSession(MODEL_PATH)
+session = ort.InferenceSession(MODEL_PATH, providers=['CPUExecutionProvider'])
 print("✅ Modelo listo")
 
 
-def preprocesar(img_bytes: bytes) -> np.ndarray:
+def preprocesar(img_bytes):
     img = Image.open(io.BytesIO(img_bytes)).convert("RGB").resize((IMG_SIZE, IMG_SIZE))
     arr = np.array(img, dtype="float32") / 255.0
     return arr[np.newaxis, ...]
 
 
-def analizar(img_bytes: bytes) -> dict:
+def analizar(img_bytes):
     entrada = preprocesar(img_bytes)
     outputs = session.run([OUTPUT_NAME], {INPUT_NAME: entrada})
-    confianza_original = float(outputs[0][0][0])
-    # Invertir si el modelo entrenó con etiquetas al revés
-    confianza = 1.0 - confianza_original
+    conf_original = float(outputs[0][0][0])
+    confianza = 1.0 - conf_original
     es_flor   = confianza >= UMBRAL
-    return {
-        "es_flor":   es_flor,
-        "confianza": round(confianza, 4),
-        "umbral":    UMBRAL
-    }
+    print(f"✅ {'FLOR' if es_flor else 'NO FLOR'} | Confianza: {confianza*100:.1f}%")
+    return {"es_flor": es_flor, "confianza": round(confianza, 4), "umbral": UMBRAL}
 
 
 class Handler(BaseHTTPRequestHandler):
-    def log_message(self, format, *args):
-        pass  # silenciar logs del servidor
+    def log_message(self, f, *a): pass
+
+    def send_cors(self):
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_cors()
+        self.end_headers()
 
     def do_GET(self):
-        if self.path in ('/', '/index.html', '/interfaz_flores.html'):
+        if self.path in ('/', '/interfaz_flores.html'):
             try:
                 with open(HTML_FILE, 'rb') as f:
                     content = f.read()
                 self.send_response(200)
                 self.send_header('Content-Type', 'text/html; charset=utf-8')
+                self.send_cors()
                 self.end_headers()
                 self.wfile.write(content)
-            except FileNotFoundError:
-                self.send_error(404, "Archivo HTML no encontrado")
+            except:
+                self.send_error(404)
         else:
-            self.send_error(404)
+            self.send_response(200)
+            self.end_headers()
 
     def do_POST(self):
         if self.path == '/analizar':
             try:
                 length = int(self.headers.get('Content-Length', 0))
-                body   = json.loads(self.rfile.read(length))
+                raw = b''
+                while len(raw) < length:
+                    chunk = self.rfile.read(min(65536, length - len(raw)))
+                    if not chunk: break
+                    raw += chunk
+
+                body    = json.loads(raw.decode('utf-8'))
                 img_b64 = body.get('imagen', '')
-                img_bytes = base64.b64decode(img_b64)
-                resultado = analizar(img_bytes)
-                resp = json.dumps(resultado).encode()
+                if ',' in img_b64:
+                    img_b64 = img_b64.split(',')[1]
+
+                resultado = analizar(base64.b64decode(img_b64))
+                resp = json.dumps(resultado).encode('utf-8')
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Content-Length', str(len(resp)))
+                self.send_cors()
                 self.end_headers()
                 self.wfile.write(resp)
+                self.wfile.flush()
             except Exception as e:
+                print(f"❌ Error: {e}")
+                resp = json.dumps({"error": str(e)}).encode()
                 self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.send_cors()
                 self.end_headers()
-                self.wfile.write(json.dumps({"error": str(e)}).encode())
+                self.wfile.write(resp)
         else:
             self.send_error(404)
-
-    def do_OPTIONS(self):
-        self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        self.end_headers()
 
 
 if __name__ == "__main__":
     server = HTTPServer(('localhost', PUERTO), Handler)
-    print(f"\n🌸 FloreScope corriendo en http://localhost:{PUERTO}")
+    print(f"\n🌸 FloreScope en http://localhost:{PUERTO}")
     print("   Abre ese link en tu navegador")
-    print("   Presiona Ctrl+C para detener\n")
+    print("   Ctrl+C para detener\n")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
