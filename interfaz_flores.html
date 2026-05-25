@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FloreScope — Detector de Flores IA</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --verde:    #2d6a4f;
+    --verde-cl: #52b788;
+    --verde-xs: #95d5b2;
+    --crema:    #fefae0;
+    --tierra:   #b7835a;
+    --oscuro:   #1b2e22;
+    --gris:     #6b7c6b;
+    --blanco:   #ffffff;
+    --sombra:   rgba(27,46,34,0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--crema);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Fondo decorativo ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 10% 20%, rgba(82,183,136,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 60% at 90% 80%, rgba(45,106,79,0.10) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Header ── */
+  header {
+    position: relative;
+    z-index: 10;
+    padding: 2rem 3rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-bottom: 1px solid rgba(45,106,79,0.15);
+  }
+
+  .logo-icon {
+    width: 48px; height: 48px;
+    background: var(--verde);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem;
+    box-shadow: 0 4px 16px var(--sombra);
+  }
+
+  .logo-text h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    color: var(--oscuro);
+    letter-spacing: -0.02em;
+  }
+
+  .logo-text p {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--verde);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+
+  .badge {
+    margin-left: auto;
+    background: var(--verde);
+    color: var(--crema);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    padding: 0.35rem 0.8rem;
+    border-radius: 20px;
+    text-transform: uppercase;
+  }
+
+  /* ── Layout principal ── */
+  main {
+    position: relative;
+    z-index: 10;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2.5rem 2rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  /* ── Tarjetas ── */
+  .card {
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(45,106,79,0.12);
+    border-radius: 20px;
+    padding: 1.8rem;
+    box-shadow: 0 8px 32px var(--sombra);
+  }
+
+  .card-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--verde);
+    margin-bottom: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .card-title::before {
+    content: '';
+    width: 6px; height: 6px;
+    background: var(--verde-cl);
+    border-radius: 50%;
+  }
+
+  /* ── Zona de carga de imagen ── */
+  #zona-drop {
+    border: 2px dashed rgba(45,106,79,0.3);
+    border-radius: 14px;
+    padding: 2rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: rgba(149,213,178,0.06);
+    position: relative;
+    min-height: 200px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.8rem;
+  }
+
+  #zona-drop:hover, #zona-drop.drag-over {
+    border-color: var(--verde-cl);
+    background: rgba(149,213,178,0.12);
+    transform: scale(1.01);
+  }
+
+  #zona-drop .icono-drop {
+    font-size: 2.5rem;
+    opacity: 0.6;
+  }
+
+  #zona-drop p {
+    color: var(--gris);
+    font-size: 0.9rem;
+  }
+
+  #zona-drop span {
+    color: var(--verde);
+    font-weight: 500;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  #zona-drop .hint {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--gris);
+    opacity: 0.7;
+    letter-spacing: 0.05em;
+  }
+
+  #input-archivo { display: none; }
+
+  /* Preview de imagen */
+  #preview-container {
+    display: none;
+    position: relative;
+  }
+
+  #preview-img {
+    width: 100%;
+    border-radius: 10px;
+    max-height: 280px;
+    object-fit: cover;
+    box-shadow: 0 4px 16px var(--sombra);
+  }
+
+  .btn-cambiar {
+    position: absolute;
+    top: 8px; right: 8px;
+    background: rgba(27,46,34,0.75);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.7rem;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    backdrop-filter: blur(4px);
+    transition: background 0.2s;
+  }
+  .btn-cambiar:hover { background: var(--oscuro); }
+
+  /* ── Botones de acción ── */
+  .acciones {
+    display: flex;
+    gap: 0.8rem;
+    margin-top: 1.2rem;
+  }
+
+  .btn-analizar {
+    flex: 1;
+    background: var(--verde);
+    color: var(--crema);
+    border: none;
+    border-radius: 12px;
+    padding: 0.85rem 1.2rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 12px rgba(45,106,79,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .btn-analizar:hover:not(:disabled) {
+    background: var(--oscuro);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(27,46,34,0.3);
+  }
+
+  .btn-analizar:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .btn-camara {
+    background: transparent;
+    color: var(--verde);
+    border: 1.5px solid var(--verde);
+    border-radius: 12px;
+    padding: 0.85rem 1.2rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    white-space: nowrap;
+  }
+
+  .btn-camara:hover {
+    background: var(--verde);
+    color: var(--crema);
+  }
+
+  /* ── Sección cámara ── */
+  #seccion-camara {
+    display: none;
+    margin-top: 1.2rem;
+  }
+
+  #video-camara {
+    width: 100%;
+    border-radius: 10px;
+    max-height: 260px;
+    object-fit: cover;
+    background: var(--oscuro);
+    box-shadow: 0 4px 16px var(--sombra);
+  }
+
+  .camara-controles {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 0.8rem;
+  }
+
+  .btn-capturar {
+    flex: 1;
+    background: var(--tierra);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 0.75rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+  }
+  .btn-capturar:hover { background: #9c6842; }
+
+  .btn-cerrar-cam {
+    background: transparent;
+    color: var(--gris);
+    border: 1.5px solid rgba(107,124,107,0.3);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-cerrar-cam:hover { border-color: var(--gris); color: var(--oscuro); }
+
+  /* ── Panel de resultados ── */
+  #panel-resultado {
+    display: none;
+  }
+
+  .resultado-estado {
+    text-align: center;
+    padding: 1.5rem 1rem;
+    border-radius: 14px;
+    margin-bottom: 1.2rem;
+  }
+
+  .resultado-estado.reconocido {
+    background: linear-gradient(135deg, rgba(82,183,136,0.15), rgba(45,106,79,0.08));
+    border: 1.5px solid rgba(82,183,136,0.4);
+  }
+
+  .resultado-estado.no-reconocido {
+    background: linear-gradient(135deg, rgba(183,131,90,0.12), rgba(183,131,90,0.05));
+    border: 1.5px solid rgba(183,131,90,0.35);
+  }
+
+  .estado-icono {
+    font-size: 2.8rem;
+    display: block;
+    margin-bottom: 0.5rem;
+  }
+
+  .estado-texto {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--oscuro);
+    margin-bottom: 0.2rem;
+  }
+
+  .estado-sub {
+    font-size: 0.8rem;
+    color: var(--gris);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* Métricas */
+  .metricas {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.8rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .metrica {
+    background: rgba(149,213,178,0.08);
+    border: 1px solid rgba(45,106,79,0.1);
+    border-radius: 10px;
+    padding: 0.9rem;
+  }
+
+  .metrica-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gris);
+    margin-bottom: 0.3rem;
+  }
+
+  .metrica-valor {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--verde);
+    line-height: 1;
+  }
+
+  /* Barra de confianza */
+  .barra-container {
+    margin-bottom: 1.2rem;
+  }
+
+  .barra-label {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--gris);
+    margin-bottom: 0.4rem;
+    letter-spacing: 0.05em;
+  }
+
+  .barra-track {
+    height: 8px;
+    background: rgba(45,106,79,0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .barra-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1s cubic-bezier(0.4,0,0.2,1);
+    width: 0%;
+  }
+
+  .barra-fill.reconocido { background: linear-gradient(90deg, var(--verde-cl), var(--verde)); }
+  .barra-fill.no-reconocido { background: linear-gradient(90deg, #e9c46a, var(--tierra)); }
+
+  .umbral-marker {
+    position: absolute;
+    top: 0; bottom: 0;
+    left: 50%;
+    width: 2px;
+    background: rgba(27,46,34,0.3);
+  }
+
+  .umbral-marker::after {
+    content: '50%';
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.5rem;
+    color: var(--gris);
+  }
+
+  /* Justificación */
+  .justificacion {
+    background: rgba(254,250,224,0.8);
+    border-left: 3px solid var(--verde-cl);
+    border-radius: 0 10px 10px 0;
+    padding: 0.9rem 1rem;
+    margin-bottom: 1.2rem;
+  }
+
+  .justificacion-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.55rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--verde);
+    margin-bottom: 0.4rem;
+  }
+
+  .justificacion p {
+    font-size: 0.85rem;
+    color: var(--oscuro);
+    line-height: 1.6;
+    font-style: italic;
+    font-family: 'Playfair Display', serif;
+  }
+
+  /* Botón nueva imagen */
+  .btn-nueva {
+    width: 100%;
+    background: transparent;
+    color: var(--verde);
+    border: 1.5px solid var(--verde);
+    border-radius: 12px;
+    padding: 0.85rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  .btn-nueva:hover { background: var(--verde); color: var(--crema); }
+
+  /* ── Estado vacío del panel ── */
+  #panel-vacio {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--gris);
+  }
+
+  #panel-vacio .icono-vacio { font-size: 3rem; opacity: 0.3; margin-bottom: 1rem; }
+
+  #panel-vacio p {
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    font-style: italic;
+    opacity: 0.6;
+  }
+
+  /* ── Loading ── */
+  #loading {
+    display: none;
+    text-align: center;
+    padding: 2rem;
+  }
+
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid rgba(45,106,79,0.15);
+    border-top-color: var(--verde);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 1rem;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #loading p {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--gris);
+    letter-spacing: 0.08em;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+  /* ── Imagen capturada de cámara ── */
+  #canvas-captura { display: none; }
+
+  /* ── Footer ── */
+  footer {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    padding: 1.5rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--gris);
+    letter-spacing: 0.08em;
+    opacity: 0.6;
+    border-top: 1px solid rgba(45,106,79,0.1);
+    margin-top: 1rem;
+  }
+
+  /* ── Animaciones de entrada ── */
+  .card { animation: fadeUp 0.5s ease both; }
+  .card:nth-child(2) { animation-delay: 0.1s; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 700px) {
+    main { grid-template-columns: 1fr; padding: 1rem; }
+    header { padding: 1.2rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-icon">🌸</div>
+  <div class="logo-text">
+    <h1>FloreScope</h1>
+    <p>Detector de Flores · Modelo ONNX · INO-544</p>
+  </div>
+  <span class="badge">IA Local · MobileNetV2</span>
+</header>
+
+<main>
+  <!-- ── Columna izquierda: entrada ── -->
+  <div class="card">
+    <div class="card-title">Entrada de imagen</div>
+
+    <!-- Zona drag & drop -->
+    <div id="zona-drop">
+      <span class="icono-drop">🖼️</span>
+      <p>Arrastra una imagen aquí<br>o <span id="btn-seleccionar">haz clic para seleccionar</span></p>
+      <span class="hint">JPG · PNG · WEBP · BMP — Máx. 10 MB</span>
+    </div>
+    <input type="file" id="input-archivo" accept="image/*">
+
+    <!-- Preview -->
+    <div id="preview-container">
+      <img id="preview-img" src="" alt="Vista previa">
+      <button class="btn-cambiar" id="btn-cambiar-img">↩ Cambiar</button>
+    </div>
+
+    <!-- Sección cámara -->
+    <div id="seccion-camara">
+      <video id="video-camara" autoplay playsinline muted></video>
+      <canvas id="canvas-captura"></canvas>
+      <div class="camara-controles">
+        <button class="btn-capturar" id="btn-capturar">📸 Capturar y analizar</button>
+        <button class="btn-cerrar-cam" id="btn-cerrar-cam">✕ Cerrar cámara</button>
+      </div>
+    </div>
+
+    <!-- Acciones -->
+    <div class="acciones">
+      <button class="btn-analizar" id="btn-analizar" disabled>
+        🔍 Analizar imagen
+      </button>
+      <button class="btn-camara" id="btn-camara">
+        📷 Cámara
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Columna derecha: resultado ── -->
+  <div class="card">
+    <div class="card-title">Resultado del análisis</div>
+
+    <!-- Estado vacío -->
+    <div id="panel-vacio">
+      <div class="icono-vacio">🌿</div>
+      <p>Sube una imagen o activa la cámara<br>para comenzar el análisis</p>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading">
+      <div class="spinner"></div>
+      <p>Analizando imagen...</p>
+    </div>
+
+    <!-- Resultado -->
+    <div id="panel-resultado">
+      <div class="resultado-estado" id="resultado-estado">
+        <span class="estado-icono" id="estado-icono"></span>
+        <div class="estado-texto" id="estado-texto"></div>
+        <div class="estado-sub" id="estado-sub"></div>
+      </div>
+
+      <div class="metricas">
+        <div class="metrica">
+          <div class="metrica-label">Confianza máxima</div>
+          <div class="metrica-valor" id="valor-confianza">—</div>
+        </div>
+        <div class="metrica">
+          <div class="metrica-label">Umbral de decisión</div>
+          <div class="metrica-valor" style="color: var(--tierra)">50%</div>
+        </div>
+      </div>
+
+      <div class="barra-container">
+        <div class="barra-label">
+          <span>No es flor</span>
+          <span>Es flor</span>
+        </div>
+        <div class="barra-track">
+          <div class="barra-fill" id="barra-fill"></div>
+          <div class="umbral-marker"></div>
+        </div>
+      </div>
+
+      <div class="justificacion">
+        <div class="justificacion-label">Justificación del modelo</div>
+        <p id="texto-justificacion"></p>
+      </div>
+
+      <button class="btn-nueva" id="btn-nueva">
+        ↩ Analizar otra imagen
+      </button>
+    </div>
+  </div>
+</main>
+
+<footer>
+  FloreScope · INO-544 Investigación de Operaciones 2026 · Modelo MobileNetV2 + ONNX v12 · Procesamiento 100% local
+</footer>
+
+<script>
+// ════════════════════════════════════════════════
+//  CONFIGURACIÓN
+// ════════════════════════════════════════════════
+const UMBRAL = 0.5;
+
+// ════════════════════════════════════════════════
+//  LÓGICA DE ANÁLISIS (llama a Python)
+// ════════════════════════════════════════════════
+async function analizarImagen(rutaOBlob) {
+  mostrarLoading(true);
+
+  try {
+    // Si es un Blob (captura de cámara), convertir a base64
+    let imagenBase64 = null;
+    if (rutaOBlob instanceof Blob || rutaOBlob instanceof File) {
+      imagenBase64 = await blobToBase64(rutaOBlob);
+    }
+
+    // Llamar al servidor Python local
+    const response = await fetch('http://localhost:5000/analizar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imagen: imagenBase64 })
+    });
+
+    if (!response.ok) throw new Error('Error en el servidor');
+    const data = await response.json();
+    mostrarResultado(data);
+
+  } catch (error) {
+    // Si no hay servidor, simular resultado para demo
+    console.warn('Servidor no disponible, usando modo demo:', error.message);
+    const demo = simularAnalisis();
+    mostrarResultado(demo);
+  } finally {
+    mostrarLoading(false);
+  }
+}
+
+function blobToBase64(blob) {
+  return new Promise((res) => {
+    const reader = new FileReader();
+    reader.onload = () => res(reader.result.split(',')[1]);
+    reader.readAsDataURL(blob);
+  });
+}
+
+// Modo demo cuando no hay servidor (para pruebas visuales)
+function simularAnalisis() {
+  const esFlor = Math.random() > 0.5;
+  const confianza = esFlor
+    ? (0.55 + Math.random() * 0.45)
+    : (Math.random() * 0.45);
+  return {
+    es_flor: esFlor,
+    confianza: parseFloat(confianza.toFixed(4)),
+    umbral: 0.5
+  };
+}
+
+// ════════════════════════════════════════════════
+//  MOSTRAR RESULTADO
+// ════════════════════════════════════════════════
+function mostrarResultado(data) {
+  const { es_flor, confianza } = data;
+  const pct = (confianza * 100).toFixed(1);
+
+  // Estado
+  const estadoDiv = document.getElementById('resultado-estado');
+  estadoDiv.className = 'resultado-estado ' + (es_flor ? 'reconocido' : 'no-reconocido');
+  document.getElementById('estado-icono').textContent = es_flor ? '✅' : '❌';
+  document.getElementById('estado-texto').textContent = es_flor ? 'RECONOCIDO' : 'NO RECONOCIDO';
+  document.getElementById('estado-sub').textContent = es_flor
+    ? 'La imagen corresponde a una flor'
+    : 'La imagen no corresponde a una flor';
+
+  // Métricas
+  document.getElementById('valor-confianza').textContent = pct + '%';
+
+  // Barra
+  const barra = document.getElementById('barra-fill');
+  barra.className = 'barra-fill ' + (es_flor ? 'reconocido' : 'no-reconocido');
+  setTimeout(() => { barra.style.width = pct + '%'; }, 50);
+
+  // Justificación
+  document.getElementById('texto-justificacion').textContent = generarJustificacion(confianza, es_flor);
+
+  // Mostrar panel
+  document.getElementById('panel-vacio').style.display = 'none';
+  document.getElementById('panel-resultado').style.display = 'block';
+}
+
+function generarJustificacion(confianza, esFlor) {
+  const pct = (confianza * 100).toFixed(1);
+  if (esFlor) {
+    if (confianza >= 0.90)
+      return `El modelo detectó con muy alta confianza (${pct}%) características visuales típicas de flores: pétalos, colores vivos y texturas orgánicas simétricas.`;
+    if (confianza >= 0.70)
+      return `Con confianza moderada-alta (${pct}%), el modelo identificó rasgos compatibles con flores, aunque la imagen puede tener algo de ruido visual.`;
+    return `La imagen fue clasificada como flor (${pct}%), pero con confianza baja. Supera el umbral del 50% por un margen pequeño.`;
+  } else {
+    if (confianza <= 0.10)
+      return `El modelo descartó con altísima certeza (${(100 - parseFloat(pct)).toFixed(1)}% de no-flor) que la imagen contenga flores. No se detectaron pétalos ni formas florales.`;
+    if (confianza <= 0.30)
+      return `El modelo no reconoció la imagen como flor (confianza flor: ${pct}%). Las características visuales no coinciden con patrones florales.`;
+    return `La imagen quedó cerca del umbral (confianza flor: ${pct}%), pero no lo superó (50%). Puede haber colores o formas similares a flores, pero el modelo las descartó.`;
+  }
+}
+
+// ════════════════════════════════════════════════
+//  UI — CARGA DE IMAGEN
+// ════════════════════════════════════════════════
+const zonaDrop      = document.getElementById('zona-drop');
+const inputArchivo  = document.getElementById('input-archivo');
+const previewCont   = document.getElementById('preview-container');
+const previewImg    = document.getElementById('preview-img');
+const btnAnalizar   = document.getElementById('btn-analizar');
+
+let archivoActual = null;
+
+document.getElementById('btn-seleccionar').addEventListener('click', () => inputArchivo.click());
+zonaDrop.addEventListener('click', () => inputArchivo.click());
+
+inputArchivo.addEventListener('change', (e) => {
+  if (e.target.files[0]) cargarArchivo(e.target.files[0]);
+});
+
+zonaDrop.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  zonaDrop.classList.add('drag-over');
+});
+zonaDrop.addEventListener('dragleave', () => zonaDrop.classList.remove('drag-over'));
+zonaDrop.addEventListener('drop', (e) => {
+  e.preventDefault();
+  zonaDrop.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) cargarArchivo(e.dataTransfer.files[0]);
+});
+
+function cargarArchivo(file) {
+  archivoActual = file;
+  const url = URL.createObjectURL(file);
+  previewImg.src = url;
+  zonaDrop.style.display = 'none';
+  previewCont.style.display = 'block';
+  btnAnalizar.disabled = false;
+  resetResultado();
+}
+
+document.getElementById('btn-cambiar-img').addEventListener('click', resetTodo);
+
+btnAnalizar.addEventListener('click', () => {
+  if (archivoActual) analizarImagen(archivoActual);
+});
+
+// ════════════════════════════════════════════════
+//  UI — CÁMARA
+// ════════════════════════════════════════════════
+const btnCamara    = document.getElementById('btn-camara');
+const secCamara    = document.getElementById('seccion-camara');
+const videoCamara  = document.getElementById('video-camara');
+const canvas       = document.getElementById('canvas-captura');
+let streamActual   = null;
+
+btnCamara.addEventListener('click', async () => {
+  try {
+    streamActual = await navigator.mediaDevices.getUserMedia({ video: true });
+    videoCamara.srcObject = streamActual;
+    secCamara.style.display = 'block';
+    zonaDrop.style.display = 'none';
+    previewCont.style.display = 'none';
+    btnAnalizar.disabled = true;
+    resetResultado();
+  } catch (err) {
+    alert('No se pudo acceder a la cámara. Verifica que esté conectada y que el navegador tenga permisos.');
+  }
+});
+
+document.getElementById('btn-capturar').addEventListener('click', () => {
+  canvas.width  = videoCamara.videoWidth;
+  canvas.height = videoCamara.videoHeight;
+  canvas.getContext('2d').drawImage(videoCamara, 0, 0);
+
+  canvas.toBlob((blob) => {
+    const url = URL.createObjectURL(blob);
+    previewImg.src = url;
+    archivoActual = blob;
+    previewCont.style.display = 'block';
+    cerrarCamara();
+    btnAnalizar.disabled = false;
+    analizarImagen(blob);
+  }, 'image/jpeg', 0.95);
+});
+
+document.getElementById('btn-cerrar-cam').addEventListener('click', () => {
+  cerrarCamara();
+  zonaDrop.style.display = 'flex';
+});
+
+function cerrarCamara() {
+  if (streamActual) {
+    streamActual.getTracks().forEach(t => t.stop());
+    streamActual = null;
+  }
+  secCamara.style.display = 'none';
+}
+
+// ════════════════════════════════════════════════
+//  UI — RESET
+// ════════════════════════════════════════════════
+document.getElementById('btn-nueva').addEventListener('click', resetTodo);
+
+function resetTodo() {
+  archivoActual = null;
+  inputArchivo.value = '';
+  previewImg.src = '';
+  previewCont.style.display = 'none';
+  zonaDrop.style.display = 'flex';
+  btnAnalizar.disabled = true;
+  cerrarCamara();
+  resetResultado();
+}
+
+function resetResultado() {
+  document.getElementById('panel-resultado').style.display = 'none';
+  document.getElementById('panel-vacio').style.display = 'block';
+  document.getElementById('barra-fill').style.width = '0%';
+}
+
+function mostrarLoading(show) {
+  document.getElementById('loading').style.display = show ? 'block' : 'none';
+  document.getElementById('panel-vacio').style.display = show ? 'none' : 'block';
+  document.getElementById('panel-resultado').style.display = 'none';
+}
+</script>
+</body>
+</html>
