@@ -40,22 +40,35 @@
 
 ### 💡 Justificación Crítica (Control de Autoría)
 *Explique detalladamente por qué el equipo eligió esa Tasa de Aprendizaje (Learning Rate) específica y el impacto que tuvo en las gráficas de pérdida durante el laboratorio:* 
-> [Escribir aquí la respuesta analítica del equipo. Evite respuestas genéricas generadas por IA]. ------------
+> [¿Por qué elegimos 0.001?
+La tasa de aprendizaje es el tamaño del "paso" que da el modelo para corregir sus errores. Elegimos 0.001 (1e-3) basándonos en los siguientes criterios:
+<img width="1209" height="419" alt="image" src="https://github.com/user-attachments/assets/e1a50a8d-1569-4009-9e12-3a929d97aebb" />
+
+Impacto en las Gráficas de Pérdida (Loss):
+Épocas 1-3 (Inicio): La pérdida bajó rápido y de forma estable (desde ~0.7). Esto nos demostró que el tamaño del paso era el adecuado para avanzar con buen ritmo.
+Épocas 4-7 (Medio): Siguió bajando suavemente hasta 0.1 - 0.2. Las curvas de entrenamiento y validación descendieron juntas y en paralelo, lo que nos confirmó que no hubo sobreajuste (overfitting).
+Épocas 8-10 (Final): La gráfica se aplanó entre 0.05 y 0.1. El modelo ya había aprendido lo necesario (convergencia) y se estabilizó.
+
+Conclusión:
+La tasa de 0.001 fue ideal porque el modelo aprendió rápido y sin alteraciones, las curvas se mantuvieron de la mano y logramos una precisión excelente superior al 96%.
+Si hubiéramos usado una tasa más alta, la gráfica habría tenido picos raros (comportamiento errático).
+Si hubiera sido más baja, el modelo habría tardado demasiado en avanzar.
+]. 
 
 ---
 
 ## 📈 4. Métricas de Rendimiento (Testing - 20%)
-* **Precisión final (Accuracy) en la data de test:** [100%]
-* **Pérdida final (Loss) en la data de test:** [0.0000]
+* **Precisión final (Accuracy) en la data de test:** [97.87%]
+* **Pérdida final (Loss) en la data de test:** [0.1074]
 
 *(Inserte aquí abajo la captura de pantalla de la gráfica de entrenamiento Accuracy/Loss de su modelo)*
-![Gráfica de Entrenamiento](src/grafica_rendimiento.png) ---------------
+![Gráfica de Entrenamiento](src/grafica_rendimiento.png) 
 
 ---
 
 ## ⚙️ 5. Especificación de Exportación ONNX
 El modelo se ha homologado bajo los estándares requeridos por la interfaz centralizada:
-* **Nombre del archivo:** `model/nombre_equipo.onnx`
+* **Nombre del archivo:** `model/INO544-2026I-Flores.onnx`
 * **Tensor de Entrada (Input Shape):** `[1, 224, 224, 3]` (Tipo: `float32`)
 * **Tensor de Salida (Output Shape):** `[1, 1]` (Tipo: `float32`)
 * **Función de activación final:** Sigmoide (Rango de salida de 0.0 a 1.0 para conversión a porcentaje).
@@ -67,4 +80,21 @@ Para replicar el preprocesamiento y el entrenamiento del modelo:
 
 1. Clonar el repositorio:
    ```bash
-   git clone [https://github.com/](https://github.com/)[usuario]/[repositorio].git
+   git clone https://github.com/educornielis-droid/INO544-2026I-Flores.git
+   cd INO544-2026I-Flores
+
+2. Instalar las librerías (una por una)
+   ```bash
+   pip install --no-cache-dir tensorflow==2.10.0
+   pip install --no-cache-dir opencv-python
+   pip install --no-cache-dir pillow numpy
+   pip install --no-cache-dir tf2onnx
+   pip install --no-cache-dir onnxruntime==1.10.0
+   pip install --no-cache-dir matplotlib
+
+3. Correr el servidor
+   ```bash
+   python servidor.py
+
+4. Abrir en el navegador
+   http://localhost:5000
