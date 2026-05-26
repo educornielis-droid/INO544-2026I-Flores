@@ -1,361 +1,425 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FloreScope — Detector de Flores IA</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --verde:    #2d6a4f;
-    --verde-cl: #52b788;
-    --verde-xs: #95d5b2;
-    --crema:    #fefae0;
-    --tierra:   #b7835a;
-    --oscuro:   #1b2e22;
-    --gris:     #6b7c6b;
-    --blanco:   #ffffff;
-    --sombra:   rgba(27,46,34,0.15);
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'DM Sans', sans-serif; background: var(--crema); min-height: 100vh; overflow-x: hidden; }
-  body::before {
-    content: ''; position: fixed; inset: 0;
-    background: radial-gradient(ellipse 60% 50% at 10% 20%, rgba(82,183,136,0.12) 0%, transparent 60%),
-                radial-gradient(ellipse 40% 60% at 90% 80%, rgba(45,106,79,0.10) 0%, transparent 60%);
-    pointer-events: none; z-index: 0;
-  }
-  header {
-    position: relative; z-index: 10;
-    padding: 2rem 3rem 1.5rem;
-    display: flex; align-items: center; gap: 1rem;
-    border-bottom: 1px solid rgba(45,106,79,0.15);
-  }
-  .logo-icon { width: 48px; height: 48px; background: var(--verde); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; box-shadow: 0 4px 16px var(--sombra); }
-  .logo-text h1 { font-family: 'Playfair Display', serif; font-size: 1.6rem; color: var(--oscuro); letter-spacing: -0.02em; }
-  .logo-text p { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: var(--verde); letter-spacing: 0.12em; text-transform: uppercase; font-weight: 500; }
-  .badge { margin-left: auto; background: var(--verde); color: var(--crema); font-family: 'DM Mono', monospace; font-size: 0.6rem; letter-spacing: 0.1em; padding: 0.35rem 0.8rem; border-radius: 20px; text-transform: uppercase; }
-  main { position: relative; z-index: 10; max-width: 1100px; margin: 0 auto; padding: 2.5rem 2rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; align-items: start; }
-  .card { background: rgba(255,255,255,0.85); backdrop-filter: blur(8px); border: 1px solid rgba(45,106,79,0.12); border-radius: 20px; padding: 1.8rem; box-shadow: 0 8px 32px var(--sombra); animation: fadeUp 0.5s ease both; }
-  .card:nth-child(2) { animation-delay: 0.1s; }
-  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-  .card-title { font-family: 'DM Mono', monospace; font-size: 0.65rem; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--verde); margin-bottom: 1.2rem; display: flex; align-items: center; gap: 0.5rem; }
-  .card-title::before { content: ''; width: 6px; height: 6px; background: var(--verde-cl); border-radius: 50%; }
-  #zona-drop { border: 2px dashed rgba(45,106,79,0.3); border-radius: 14px; padding: 2rem 1rem; text-align: center; cursor: pointer; transition: all 0.3s ease; background: rgba(149,213,178,0.06); min-height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.8rem; }
-  #zona-drop:hover, #zona-drop.drag-over { border-color: var(--verde-cl); background: rgba(149,213,178,0.12); transform: scale(1.01); }
-  #zona-drop .icono-drop { font-size: 2.5rem; opacity: 0.6; }
-  #zona-drop p { color: var(--gris); font-size: 0.9rem; }
-  #zona-drop span { color: var(--verde); font-weight: 500; text-decoration: underline; cursor: pointer; }
-  #zona-drop .hint { font-family: 'DM Mono', monospace; font-size: 0.6rem; color: var(--gris); opacity: 0.7; letter-spacing: 0.05em; }
-  #input-archivo { display: none; }
-  #preview-container { display: none; position: relative; }
-  #preview-img { width: 100%; border-radius: 10px; max-height: 280px; object-fit: cover; box-shadow: 0 4px 16px var(--sombra); }
-  .btn-cambiar { position: absolute; top: 8px; right: 8px; background: rgba(27,46,34,0.75); color: white; border: none; border-radius: 8px; padding: 0.35rem 0.7rem; font-size: 0.7rem; cursor: pointer; font-family: 'DM Mono', monospace; backdrop-filter: blur(4px); transition: background 0.2s; }
-  .btn-cambiar:hover { background: var(--oscuro); }
-  .acciones { display: flex; gap: 0.8rem; margin-top: 1.2rem; }
-  .btn-analizar { flex: 1; background: var(--verde); color: var(--crema); border: none; border-radius: 12px; padding: 0.85rem 1.2rem; font-family: 'DM Sans', sans-serif; font-size: 0.95rem; font-weight: 500; cursor: pointer; transition: all 0.25s ease; box-shadow: 0 4px 12px rgba(45,106,79,0.3); display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
-  .btn-analizar:hover:not(:disabled) { background: var(--oscuro); transform: translateY(-2px); box-shadow: 0 8px 20px rgba(27,46,34,0.3); }
-  .btn-analizar:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-  .btn-camara { background: transparent; color: var(--verde); border: 1.5px solid var(--verde); border-radius: 12px; padding: 0.85rem 1.2rem; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; cursor: pointer; transition: all 0.25s ease; display: flex; align-items: center; gap: 0.4rem; white-space: nowrap; }
-  .btn-camara:hover { background: var(--verde); color: var(--crema); }
-  #seccion-camara { display: none; margin-top: 1.2rem; }
-  #video-camara { width: 100%; border-radius: 10px; max-height: 260px; object-fit: cover; background: var(--oscuro); box-shadow: 0 4px 16px var(--sombra); }
-  .camara-controles { display: flex; gap: 0.6rem; margin-top: 0.8rem; }
-  .btn-capturar { flex: 1; background: var(--tierra); color: white; border: none; border-radius: 10px; padding: 0.75rem; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 0.4rem; }
-  .btn-capturar:hover { background: #9c6842; }
-  .btn-cerrar-cam { background: transparent; color: var(--gris); border: 1.5px solid rgba(107,124,107,0.3); border-radius: 10px; padding: 0.75rem 1rem; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; }
-  .btn-cerrar-cam:hover { border-color: var(--gris); color: var(--oscuro); }
-  #panel-resultado { display: none; }
-  .resultado-estado { text-align: center; padding: 1.5rem 1rem; border-radius: 14px; margin-bottom: 1.2rem; }
-  .resultado-estado.reconocido { background: linear-gradient(135deg, rgba(82,183,136,0.15), rgba(45,106,79,0.08)); border: 1.5px solid rgba(82,183,136,0.4); }
-  .resultado-estado.no-reconocido { background: linear-gradient(135deg, rgba(183,131,90,0.12), rgba(183,131,90,0.05)); border: 1.5px solid rgba(183,131,90,0.35); }
-  .estado-icono { font-size: 2.8rem; display: block; margin-bottom: 0.5rem; }
-  .estado-texto { font-family: 'Playfair Display', serif; font-size: 1.4rem; font-weight: 700; color: var(--oscuro); margin-bottom: 0.2rem; }
-  .estado-sub { font-size: 0.8rem; color: var(--gris); font-family: 'DM Mono', monospace; }
-  .metricas { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-bottom: 1.2rem; }
-  .metrica { background: rgba(149,213,178,0.08); border: 1px solid rgba(45,106,79,0.1); border-radius: 10px; padding: 0.9rem; }
-  .metrica-label { font-family: 'DM Mono', monospace; font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gris); margin-bottom: 0.3rem; }
-  .metrica-valor { font-family: 'Playfair Display', serif; font-size: 1.6rem; font-weight: 700; color: var(--verde); line-height: 1; }
-  .barra-container { margin-bottom: 1.2rem; }
-  .barra-label { display: flex; justify-content: space-between; font-family: 'DM Mono', monospace; font-size: 0.62rem; color: var(--gris); margin-bottom: 0.4rem; letter-spacing: 0.05em; }
-  .barra-track { height: 8px; background: rgba(45,106,79,0.1); border-radius: 4px; overflow: hidden; position: relative; }
-  .barra-fill { height: 100%; border-radius: 4px; transition: width 1s cubic-bezier(0.4,0,0.2,1); width: 0%; }
-  .barra-fill.reconocido { background: linear-gradient(90deg, var(--verde-cl), var(--verde)); }
-  .barra-fill.no-reconocido { background: linear-gradient(90deg, #e9c46a, var(--tierra)); }
-  .umbral-marker { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; background: rgba(27,46,34,0.3); }
-  .umbral-marker::after { content: '50%'; position: absolute; top: -18px; left: 50%; transform: translateX(-50%); font-family: 'DM Mono', monospace; font-size: 0.5rem; color: var(--gris); }
-  .justificacion { background: rgba(254,250,224,0.8); border-left: 3px solid var(--verde-cl); border-radius: 0 10px 10px 0; padding: 0.9rem 1rem; margin-bottom: 1.2rem; }
-  .justificacion-label { font-family: 'DM Mono', monospace; font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--verde); margin-bottom: 0.4rem; }
-  .justificacion p { font-size: 0.85rem; color: var(--oscuro); line-height: 1.6; font-style: italic; font-family: 'Playfair Display', serif; }
-  .btn-nueva { width: 100%; background: transparent; color: var(--verde); border: 1.5px solid var(--verde); border-radius: 12px; padding: 0.85rem; font-family: 'DM Sans', sans-serif; font-size: 0.9rem; cursor: pointer; transition: all 0.25s ease; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
-  .btn-nueva:hover { background: var(--verde); color: var(--crema); }
-  #panel-vacio { text-align: center; padding: 3rem 1rem; color: var(--gris); }
-  #panel-vacio .icono-vacio { font-size: 3rem; opacity: 0.3; margin-bottom: 1rem; }
-  #panel-vacio p { font-family: 'Playfair Display', serif; font-size: 1rem; font-style: italic; opacity: 0.6; }
-  #loading { display: none; text-align: center; padding: 2rem; }
-  .spinner { width: 40px; height: 40px; border: 3px solid rgba(45,106,79,0.15); border-top-color: var(--verde); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  #loading p { font-family: 'DM Mono', monospace; font-size: 0.7rem; color: var(--gris); letter-spacing: 0.08em; animation: pulse 1.5s ease-in-out infinite; }
-  @keyframes pulse { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
-  #canvas-captura { display: none; }
-  footer { position: relative; z-index: 10; text-align: center; padding: 1.5rem; font-family: 'DM Mono', monospace; font-size: 0.6rem; color: var(--gris); letter-spacing: 0.08em; opacity: 0.6; border-top: 1px solid rgba(45,106,79,0.1); margin-top: 1rem; }
-  @media (max-width: 700px) { main { grid-template-columns: 1fr; padding: 1rem; } header { padding: 1.2rem; } }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FloreScope · Detector de Flores</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #e8e0d5;
+            font-family: 'Georgia', 'Times New Roman', serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 560px;
+            width: 100%;
+            background: #fffef7;
+            border-radius: 32px;
+            box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            padding: 32px 30px 40px;
+            border: 1px solid #e2dcd0;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #5c4b3a;
+            font-family: 'Georgia', serif;
+        }
+
+        .header h1 span {
+            background: linear-gradient(135deg, #8b6b4d, #b8956e);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .sub {
+            font-size: 0.7rem;
+            color: #b0a088;
+            margin-top: 8px;
+            letter-spacing: 1.5px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .image-area {
+            background: #faf6ef;
+            border-radius: 28px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid #e8dfd0;
+            margin-bottom: 20px;
+        }
+
+        .preview-box {
+            background: #f5efe7;
+            border-radius: 24px;
+            min-height: 230px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            border: 1px solid #e0d5c5;
+        }
+
+        .preview-box img, .preview-box video {
+            max-width: 100%;
+            max-height: 210px;
+            object-fit: contain;
+            border-radius: 16px;
+        }
+
+        .placeholder-icon {
+            text-align: center;
+            color: #c9bcab;
+            padding: 45px;
+        }
+
+        .placeholder-icon span {
+            font-size: 52px;
+        }
+
+        .btn-change {
+            background: none;
+            border: none;
+            color: #9b7b5c;
+            font-weight: 600;
+            font-size: 0.8rem;
+            margin-top: 14px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .result-box {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .status {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .status.flor { color: #7d6b3c; }
+        .status.no-flor { color: #b57c6e; }
+
+        .confidence-max {
+            font-size: 2.2rem;
+            font-weight: 600;
+            color: #5c4b3a;
+            margin: 12px 0 5px;
+        }
+
+        .confidence-label {
+            font-size: 0.65rem;
+            color: #bcab95;
+            letter-spacing: 1.5px;
+            margin-bottom: 15px;
+        }
+
+        .confidence-bar-container {
+            background: #e8dfd0;
+            border-radius: 60px;
+            height: 8px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .confidence-bar {
+            background: linear-gradient(90deg, #c9a87b, #8b6b4d);
+            width: 0%;
+            height: 100%;
+            border-radius: 60px;
+            transition: width 0.3s ease;
+        }
+
+        .threshold {
+            font-size: 0.65rem;
+            color: #bcab95;
+            margin-top: 8px;
+        }
+
+        .meter {
+            background: #f0e9df;
+            border-radius: 60px;
+            padding: 6px;
+            display: flex;
+            margin: 25px 0 20px;
+            position: relative;
+        }
+
+        .meter-option {
+            flex: 1;
+            text-align: center;
+            font-size: 0.8rem;
+            font-weight: 500;
+            padding: 8px;
+            border-radius: 50px;
+            z-index: 1;
+            color: #8f7a63;
+        }
+
+        .meter-indicator {
+            position: absolute;
+            top: 6px;
+            bottom: 6px;
+            width: calc(50% - 6px);
+            background: #fffef7;
+            border-radius: 50px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            transition: left 0.3s ease;
+            left: 6px;
+            border: 1px solid #e0d5c5;
+        }
+
+        .meter-option.active { color: #5c4b3a; font-weight: 600; }
+
+        .justification {
+            background: #faf6ef;
+            border-radius: 24px;
+            padding: 18px 22px;
+            font-size: 0.85rem;
+            color: #6b5a48;
+            line-height: 1.5;
+            margin: 20px 0;
+            text-align: center;
+            border: 1px solid #ece2d5;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 14px 0;
+            border: none;
+            border-radius: 60px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #dccfbc;
+            color: #5c4b3a;
+        }
+
+        .btn-primary:hover { background: #cdbdab; }
+
+        .btn-outline {
+            background: #fffef7;
+            color: #9b7b5c;
+            border: 1px solid #dccfbc;
+        }
+
+        .btn-outline:hover { background: #faf6ef; }
+
+        .oculto { display: none; }
+        video { width: 100%; max-height: 220px; background: #e8dfd0; border-radius: 16px; }
+        canvas { display: none; }
+    </style>
 </head>
 <body>
+<div class="container">
+    <div class="header">
+        <h1>🌼 <span>FloreScope</span></h1>
+        <div class="sub">DETECTOR DE FLORES · MODELO ONNX · INO-544</div>
+    </div>
 
-<header>
-  <div class="logo-icon">🌸</div>
-  <div class="logo-text">
-    <h1>FloreScope</h1>
-    <p>Detector de Flores · Modelo ONNX · INO-544</p>
-  </div>
-  <span class="badge">IA Local · MobileNetV2</span>
-</header>
-
-<main>
-  <div class="card">
-    <div class="card-title">Entrada de imagen</div>
-    <div id="zona-drop">
-      <span class="icono-drop">🖼️</span>
-      <p>Arrastra una imagen aquí<br>o <span id="btn-seleccionar">haz clic para seleccionar</span></p>
-      <span class="hint">JPG · PNG · WEBP · BMP — Máx. 10 MB</span>
-    </div>
-    <input type="file" id="input-archivo" accept="image/*">
-    <div id="preview-container">
-      <img id="preview-img" src="" alt="Vista previa">
-      <button class="btn-cambiar" id="btn-cambiar-img">↩ Cambiar</button>
-    </div>
-    <div id="seccion-camara">
-      <video id="video-camara" autoplay playsinline muted></video>
-      <canvas id="canvas-captura"></canvas>
-      <div class="camara-controles">
-        <button class="btn-capturar" id="btn-capturar">📸 Capturar y analizar</button>
-        <button class="btn-cerrar-cam" id="btn-cerrar-cam">✕ Cerrar cámara</button>
-      </div>
-    </div>
-    <div class="acciones">
-      <button class="btn-analizar" id="btn-analizar" disabled>🔍 Analizar imagen</button>
-      <button class="btn-camara" id="btn-camara">📷 Cámara</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">Resultado del análisis</div>
-    <div id="panel-vacio">
-      <div class="icono-vacio">🌿</div>
-      <p>Sube una imagen o activa la cámara<br>para comenzar el análisis</p>
-    </div>
-    <div id="loading">
-      <div class="spinner"></div>
-      <p>Analizando imagen...</p>
-    </div>
-    <div id="panel-resultado">
-      <div class="resultado-estado" id="resultado-estado">
-        <span class="estado-icono" id="estado-icono"></span>
-        <div class="estado-texto" id="estado-texto"></div>
-        <div class="estado-sub" id="estado-sub"></div>
-      </div>
-      <div class="metricas">
-        <div class="metrica">
-          <div class="metrica-label">Confianza máxima</div>
-          <div class="metrica-valor" id="valor-confianza">—</div>
+    <div class="image-area">
+        <div class="preview-box" id="previewBox">
+            <div class="placeholder-icon" id="placeholderIcon">
+                <span>🌻</span>
+                <p>Esperando imagen</p>
+            </div>
+            <video id="videoCamara" autoplay playsinline style="display:none;"></video>
+            <img id="imgPreview" class="oculto" alt="Vista previa">
+            <canvas id="canvasCapture" style="display:none;"></canvas>
         </div>
-        <div class="metrica">
-          <div class="metrica-label">Umbral de decisión</div>
-          <div class="metrica-valor" style="color: var(--tierra)">50%</div>
-        </div>
-      </div>
-      <div class="barra-container">
-        <div class="barra-label"><span>No es flor</span><span>Es flor</span></div>
-        <div class="barra-track">
-          <div class="barra-fill" id="barra-fill"></div>
-          <div class="umbral-marker"></div>
-        </div>
-      </div>
-      <div class="justificacion">
-        <div class="justificacion-label">Justificación del modelo</div>
-        <p id="texto-justificacion"></p>
-      </div>
-      <button class="btn-nueva" id="btn-nueva">↩ Analizar otra imagen</button>
+        <button class="btn-change" id="btnChangeImage">📁 Cambiar imagen</button>
+        <input type="file" id="fileInput" accept="image/jpeg,image/png,image/jpg" style="display:none;">
     </div>
-  </div>
-</main>
 
-<footer>
-  FloreScope · INO-544 Investigación de Operaciones 2026 · Modelo MobileNetV2 + ONNX v12 · Procesamiento 100% local
-</footer>
+    <div class="result-box">
+        <div class="status" id="statusText">NO RECONOCIDO</div>
+        <div class="confidence-max" id="confidenceValue">0.0%</div>
+        <div class="confidence-label">CONFIANZA MÁXIMA</div>
+        <div class="confidence-bar-container">
+            <div class="confidence-bar" id="confidenceBar"></div>
+        </div>
+        <div class="threshold">⚖️ UMBRAL DE DECISIÓN · 50%</div>
+    </div>
+
+    <div class="meter" id="meter">
+        <div class="meter-indicator" id="meterIndicator"></div>
+        <div class="meter-option" id="meterNoFlor">No es flor</div>
+        <div class="meter-option" id="meterFlor">Es flor</div>
+    </div>
+
+    <div class="justification" id="justificationText">Esperando análisis...</div>
+
+    <div class="buttons">
+        <button class="btn btn-outline" id="btnAnalyzeImage">📷 Analizar imagen</button>
+        <button class="btn btn-primary" id="btnCamara">🎥 Cámara</button>
+    </div>
+</div>
 
 <script>
-const UMBRAL = 0.5;
-let archivoActual = null;
-let streamActual  = null;
+    const video = document.getElementById('videoCamara');
+    const canvas = document.getElementById('canvasCapture');
+    const ctx = canvas.getContext('2d');
+    const imgPreview = document.getElementById('imgPreview');
+    const placeholderIcon = document.getElementById('placeholderIcon');
+    const fileInput = document.getElementById('fileInput');
+    const btnChangeImage = document.getElementById('btnChangeImage');
+    const btnAnalyzeImage = document.getElementById('btnAnalyzeImage');
+    const btnCamara = document.getElementById('btnCamara');
+    const statusText = document.getElementById('statusText');
+    const confidenceValue = document.getElementById('confidenceValue');
+    const confidenceBar = document.getElementById('confidenceBar');
+    const meterIndicator = document.getElementById('meterIndicator');
+    const meterNoFlor = document.getElementById('meterNoFlor');
+    const meterFlor = document.getElementById('meterFlor');
+    const justificationText = document.getElementById('justificationText');
 
-// ── Análisis ──────────────────────────────────────────────────────
-async function analizarImagen(archivo) {
-  mostrarLoading(true);
-  try {
-    const base64 = await fileToBase64(archivo);
-    const response = await fetch('http://localhost:5000/analizar', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ imagen: base64 })
+    let modo = 'imagen';
+    let streamActivo = null;
+    let intervaloDeteccion = null;
+
+    function actualizarUI(esFlor, confianza) {
+        const pct = (confianza * 100).toFixed(1);
+        confidenceValue.innerHTML = `${pct}%`;
+        confidenceBar.style.width = `${pct}%`;
+
+        if (esFlor) {
+            statusText.innerHTML = '✅ RECONOCIDO';
+            statusText.className = 'status flor';
+            justificationText.innerHTML = `🌸 Flor detectada con ${pct}% de confianza.`;
+            meterIndicator.style.left = 'calc(50% + 6px)';
+            meterNoFlor.classList.remove('active');
+            meterFlor.classList.add('active');
+        } else {
+            statusText.innerHTML = '❌ NO RECONOCIDO';
+            statusText.className = 'status no-flor';
+            justificationText.innerHTML = `🌿 No es flor. Confianza: ${(100-pct).toFixed(1)}%`;
+            meterIndicator.style.left = '6px';
+            meterNoFlor.classList.add('active');
+            meterFlor.classList.remove('active');
+        }
+    }
+
+    async function enviarImagen(base64Data) {
+        try {
+            const response = await fetch('/analizar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ imagen: base64Data })
+            });
+            const data = await response.json();
+            actualizarUI(data.es_flor, data.confianza);
+        } catch (err) {
+            justificationText.innerHTML = '⚠️ Error al conectar con el servidor.';
+        }
+    }
+
+    function analizarFrameVideo() {
+        if (!video.videoWidth) return;
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        enviarImagen(canvas.toDataURL('image/jpeg'));
+    }
+
+    async function iniciarCamara() {
+        if (streamActivo) return;
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            streamActivo = stream;
+            video.srcObject = stream;
+            video.style.display = 'block';
+            placeholderIcon.classList.add('oculto');
+            imgPreview.classList.add('oculto');
+            await video.play();
+            if (intervaloDeteccion) clearInterval(intervaloDeteccion);
+            intervaloDeteccion = setInterval(analizarFrameVideo, 500);
+        } catch (err) {
+            justificationText.innerHTML = '❌ No se pudo acceder a la cámara.';
+        }
+    }
+
+    function detenerCamara() {
+        if (intervaloDeteccion) clearInterval(intervaloDeteccion);
+        if (streamActivo) {
+            streamActivo.getTracks().forEach(track => track.stop());
+            streamActivo = null;
+            video.srcObject = null;
+        }
+        video.style.display = 'none';
+    }
+
+    function activarModoImagen() {
+        detenerCamara();
+        modo = 'imagen';
+        placeholderIcon.classList.remove('oculto');
+        video.style.display = 'none';
+        if (imgPreview.src && !imgPreview.classList.contains('oculto')) {
+            enviarImagen(imgPreview.src);
+        } else {
+            actualizarUI(false, 0);
+        }
+    }
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const base64 = ev.target.result;
+                imgPreview.src = base64;
+                imgPreview.classList.remove('oculto');
+                placeholderIcon.classList.add('oculto');
+                detenerCamara();
+                modo = 'imagen';
+                enviarImagen(base64);
+            };
+            reader.readAsDataURL(e.target.files[0]);
+        }
     });
-    if (!response.ok) throw new Error('Error ' + response.status);
-    const data = await response.json();
-    if (data.error) throw new Error(data.error);
-    mostrarResultado(data);
-  } catch (err) {
-    console.error('Error al analizar:', err);
-    alert('Error al analizar la imagen: ' + err.message);
-    mostrarLoading(false);
-    document.getElementById('panel-vacio').style.display = 'block';
-  }
-}
 
-function fileToBase64(archivo) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload  = () => {
-      // Enviar solo la parte base64 sin el prefijo data:...
-      const result = reader.result;
-      const base64 = result.includes(',') ? result.split(',')[1] : result;
-      resolve(base64);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(archivo);
-  });
-}
+    btnChangeImage.addEventListener('click', () => fileInput.click());
+    btnAnalyzeImage.addEventListener('click', () => { detenerCamara(); fileInput.click(); });
+    btnCamara.addEventListener('click', () => {
+        if (modo === 'camara' && streamActivo) return;
+        detenerCamara();
+        modo = 'camara';
+        imgPreview.classList.add('oculto');
+        placeholderIcon.classList.add('oculto');
+        iniciarCamara();
+    });
 
-// ── Resultado ─────────────────────────────────────────────────────
-function mostrarResultado(data) {
-  const { es_flor, confianza } = data;
-  const pct = (confianza * 100).toFixed(1);
-
-  const estadoDiv = document.getElementById('resultado-estado');
-  estadoDiv.className = 'resultado-estado ' + (es_flor ? 'reconocido' : 'no-reconocido');
-  document.getElementById('estado-icono').textContent  = es_flor ? '✅' : '❌';
-  document.getElementById('estado-texto').textContent  = es_flor ? 'RECONOCIDO' : 'NO RECONOCIDO';
-  document.getElementById('estado-sub').textContent    = es_flor
-    ? 'La imagen corresponde a una flor'
-    : 'La imagen no corresponde a una flor';
-
-  document.getElementById('valor-confianza').textContent = pct + '%';
-
-  const barra = document.getElementById('barra-fill');
-  barra.className = 'barra-fill ' + (es_flor ? 'reconocido' : 'no-reconocido');
-  setTimeout(() => { barra.style.width = pct + '%'; }, 50);
-
-  document.getElementById('texto-justificacion').textContent = generarJustificacion(confianza, es_flor);
-
-  document.getElementById('loading').style.display        = 'none';
-  document.getElementById('panel-vacio').style.display    = 'none';
-  document.getElementById('panel-resultado').style.display = 'block';
-}
-
-function generarJustificacion(confianza, esFlor) {
-  const pct = (confianza * 100).toFixed(1);
-  if (esFlor) {
-    if (confianza >= 0.90) return `El modelo detectó con muy alta confianza (${pct}%) características visuales típicas de flores: pétalos, colores vivos y texturas orgánicas simétricas.`;
-    if (confianza >= 0.70) return `Con confianza moderada-alta (${pct}%), el modelo identificó rasgos compatibles con flores, aunque la imagen puede tener algo de ruido visual.`;
-    return `La imagen fue clasificada como flor (${pct}%), pero con confianza baja. Supera el umbral del 50% por un margen pequeño.`;
-  } else {
-    if (confianza <= 0.10) return `El modelo descartó con altísima certeza (${(100 - parseFloat(pct)).toFixed(1)}% de no-flor) que la imagen contenga flores. No se detectaron pétalos ni formas florales.`;
-    if (confianza <= 0.30) return `El modelo no reconoció la imagen como flor (confianza flor: ${pct}%). Las características visuales no coinciden con patrones florales.`;
-    return `La imagen quedó cerca del umbral (confianza flor: ${pct}%), pero no lo superó (50%). Puede haber colores o formas similares a flores, pero el modelo las descartó.`;
-  }
-}
-
-function mostrarLoading(show) {
-  document.getElementById('loading').style.display     = show ? 'block' : 'none';
-  document.getElementById('panel-vacio').style.display = show ? 'none' : 'block';
-  document.getElementById('panel-resultado').style.display = 'none';
-}
-
-// ── Carga de imagen ───────────────────────────────────────────────
-const zonaDrop     = document.getElementById('zona-drop');
-const inputArchivo = document.getElementById('input-archivo');
-const previewCont  = document.getElementById('preview-container');
-const previewImg   = document.getElementById('preview-img');
-const btnAnalizar  = document.getElementById('btn-analizar');
-
-document.getElementById('btn-seleccionar').addEventListener('click', (e) => { e.stopPropagation(); inputArchivo.click(); });
-zonaDrop.addEventListener('click', () => inputArchivo.click());
-inputArchivo.addEventListener('change', (e) => { if (e.target.files[0]) cargarArchivo(e.target.files[0]); });
-zonaDrop.addEventListener('dragover',  (e) => { e.preventDefault(); zonaDrop.classList.add('drag-over'); });
-zonaDrop.addEventListener('dragleave', ()  => zonaDrop.classList.remove('drag-over'));
-zonaDrop.addEventListener('drop', (e) => { e.preventDefault(); zonaDrop.classList.remove('drag-over'); if (e.dataTransfer.files[0]) cargarArchivo(e.dataTransfer.files[0]); });
-
-function cargarArchivo(file) {
-  archivoActual = file;
-  previewImg.src = URL.createObjectURL(file);
-  zonaDrop.style.display      = 'none';
-  previewCont.style.display   = 'block';
-  btnAnalizar.disabled        = false;
-  resetResultado();
-}
-
-document.getElementById('btn-cambiar-img').addEventListener('click', resetTodo);
-btnAnalizar.addEventListener('click', () => { if (archivoActual) analizarImagen(archivoActual); });
-
-// ── Cámara ────────────────────────────────────────────────────────
-document.getElementById('btn-camara').addEventListener('click', async () => {
-  try {
-    streamActual = await navigator.mediaDevices.getUserMedia({ video: true });
-    document.getElementById('video-camara').srcObject = streamActual;
-    document.getElementById('seccion-camara').style.display = 'block';
-    zonaDrop.style.display    = 'none';
-    previewCont.style.display = 'none';
-    btnAnalizar.disabled      = true;
-    resetResultado();
-  } catch {
-    alert('No se pudo acceder a la cámara.');
-  }
-});
-
-document.getElementById('btn-capturar').addEventListener('click', () => {
-  const video  = document.getElementById('video-camara');
-  const canvas = document.getElementById('canvas-captura');
-  canvas.width  = video.videoWidth;
-  canvas.height = video.videoHeight;
-  canvas.getContext('2d').drawImage(video, 0, 0);
-  canvas.toBlob((blob) => {
-    archivoActual = blob;
-    previewImg.src = URL.createObjectURL(blob);
-    previewCont.style.display = 'block';
-    cerrarCamara();
-    btnAnalizar.disabled = false;
-    analizarImagen(blob);
-  }, 'image/jpeg', 0.92);
-});
-
-document.getElementById('btn-cerrar-cam').addEventListener('click', () => { cerrarCamara(); zonaDrop.style.display = 'flex'; });
-
-function cerrarCamara() {
-  if (streamActual) { streamActual.getTracks().forEach(t => t.stop()); streamActual = null; }
-  document.getElementById('seccion-camara').style.display = 'none';
-}
-
-// ── Reset ─────────────────────────────────────────────────────────
-document.getElementById('btn-nueva').addEventListener('click', resetTodo);
-
-function resetTodo() {
-  archivoActual = null;
-  inputArchivo.value = '';
-  previewImg.src = '';
-  previewCont.style.display = 'none';
-  zonaDrop.style.display    = 'flex';
-  btnAnalizar.disabled      = true;
-  cerrarCamara();
-  resetResultado();
-}
-
-function resetResultado() {
-  document.getElementById('panel-resultado').style.display = 'none';
-  document.getElementById('panel-vacio').style.display     = 'block';
-  document.getElementById('loading').style.display         = 'none';
-  document.getElementById('barra-fill').style.width        = '0%';
-}
+    activarModoImagen();
 </script>
 </body>
 </html>

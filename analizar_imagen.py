@@ -2,7 +2,8 @@
 analizar_imagen.py
 ------------------
 Carga el modelo ONNX y analiza UNA imagen para determinar
-si es o no una flor. CORREGIDO para que coincida con camara_en_vivo.py
+si es o no una flor. VERSIÓN CON INVERSIÓN.
+El modelo aprendió al revés (flores dan confianza baja).
 
 Uso:
     python analizar_imagen.py ruta/a/imagen.jpg
@@ -20,6 +21,7 @@ IMG_SIZE        = 224
 MODEL_PATH      = "modelo_flores.onnx"
 INPUT_NAME      = "cam_input"
 OUTPUT_NAME     = "confidence_score"
+UMBRAL          = 0.5
 
 
 def cargar_imagen(ruta: str) -> np.ndarray:
@@ -29,45 +31,45 @@ def cargar_imagen(ruta: str) -> np.ndarray:
     return arr[np.newaxis, ...]
 
 
-def justificar(confianza_corregida: float, es_flor: bool) -> str:
+def justificar(confianza: float, es_flor: bool) -> str:
     """Genera una justificación textual según el nivel de confianza."""
-    pct = confianza_corregida * 100
+    pct = confianza * 100
     if es_flor:
         if pct >= 90:
             return f"El modelo detectó con muy alta confianza ({pct:.1f}%) que la imagen ES una flor."
         elif pct >= 70:
             return f"Con confianza moderada-alta ({pct:.1f}%), la imagen probablemente ES una flor."
         else:
-            return f"La imagen fue clasificada como flor ({pct:.1f}%) pero con confianza baja. El umbral es 50%."
+            return f"La imagen fue clasificada como flor ({pct:.1f}%) pero con confianza baja. El umbral es {UMBRAL*100:.0f}%."
     else:
         if pct <= 10:
             return f"El modelo determinó con altísima certeza ({100-pct:.1f}%) que la imagen NO ES una flor."
         elif pct <= 30:
             return f"El modelo NO reconoció la imagen como flor (confianza flor: {pct:.1f}%)."
         else:
-            return f"La imagen NO superó el umbral (confianza flor: {pct:.1f}%). El umbral es 50%."
+            return f"La imagen NO superó el umbral (confianza flor: {pct:.1f}%). El umbral es {UMBRAL*100:.0f}%."
 
 
 def analizar(ruta_imagen: str):
     print(f"\n📷 Cargando imagen: {ruta_imagen}")
     
-    # Cargar modelo ONNX
+    # Cargar modelo
     session = ort.InferenceSession(MODEL_PATH)
-
+    
     # Preprocesar imagen
     img_array = cargar_imagen(ruta_imagen)
-
+    
     # Inferencia
     outputs = session.run([OUTPUT_NAME], {INPUT_NAME: img_array})
     confianza_original = float(outputs[0][0][0])
     
-    # ========== MISMA LÓGICA QUE camara_en_vivo.py ==========
-    # Invertir la confianza (porque el modelo entrenó al revés)
-    confianza_corregida = 1.0 - confianza_original
-    es_flor = confianza_corregida >= 0.5
-    # ========================================================
+    # ========== INVERTIR confianza (modelo aprendió al revés) ==========
+    confianza = 1.0 - confianza_original
+    # ===================================================================
     
-    justif = justificar(confianza_corregida, es_flor)
+    # Clasificar
+    es_flor = confianza >= UMBRAL
+    justif = justificar(confianza, es_flor)
 
     # Mostrar resultado
     separador = "─" * 55
@@ -76,9 +78,9 @@ def analizar(ruta_imagen: str):
     print(f"{separador}")
     print(f"  Imagen analizada : {ruta_imagen}")
     print(f"  Estado           : {estado}")
-    print(f"  Confianza modelo : {confianza_original * 100:.2f}%")
-    print(f"  Confianza real   : {confianza_corregida * 100:.2f}%")
-    print(f"  Umbral usado     : 50%")
+    print(f"  Confianza original del modelo: {confianza_original * 100:.2f}%")
+    print(f"  Confianza corregida (invertida): {confianza * 100:.2f}%")
+    print(f"  Umbral usado     : {UMBRAL * 100:.0f}%")
     print(f"  Justificación    :")
     print(textwrap.fill(f"    {justif}", width=55))
     print(f"{separador}\n")

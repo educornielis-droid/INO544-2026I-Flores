@@ -5,7 +5,7 @@ Activa la cámara de la PC y clasifica en tiempo real si lo que
 se ve es o no una flor. Muestra el resultado superpuesto sobre
 el video con OpenCV.
 
-Versión simplificada - Corregida para modelos invertidos
+VERSIÓN CON INVERSIÓN - El modelo aprendió al revés (flores dan confianza baja)
 
 Controles:
     Q  → salir
@@ -23,6 +23,7 @@ INPUT_NAME   = "cam_input"
 OUTPUT_NAME  = "confidence_score"
 IMG_SIZE     = 224
 CAMERA_INDEX = 0
+UMBRAL       = 0.5          # 50% de confianza para decidir
 
 
 def preprocesar_frame(frame: np.ndarray) -> np.ndarray:
@@ -36,17 +37,17 @@ def preprocesar_frame(frame: np.ndarray) -> np.ndarray:
 def dibujar_resultado(frame, confianza_original: float):
     """
     Superpone el resultado sobre el frame de video.
-    Invierte automáticamente la confianza porque el modelo entrenó al revés.
+    INVERTIR la confianza (modelo aprendió al revés: flores dan confianza baja)
     """
-    # INVERTIR la confianza (porque el modelo aprendió al revés)
-    confianza_corregida = 1.0 - confianza_original
-    es_flor = confianza_corregida >= 0.5
-    pct = confianza_corregida * 100
+    # INVERTIR confianza
+    confianza = 1.0 - confianza_original
+    es_flor = confianza >= UMBRAL
+    pct = confianza * 100
 
     # Colores: verde = flor | rojo = no flor
     color = (0, 200, 0) if es_flor else (0, 0, 220)
     etiqueta = "🌼 ES FLOR" if es_flor else "❌ NO ES FLOR"
-    confianza_texto = f"Confianza: {pct:.1f}%"
+    confianza_texto = f"Confianza: {pct:.1f}%  |  Umbral: {UMBRAL*100:.0f}%"
 
     h, w = frame.shape[:2]
 
@@ -61,12 +62,12 @@ def dibujar_resultado(frame, confianza_original: float):
 
     # Texto de confianza
     cv2.putText(frame, confianza_texto,
-                (15, 68), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (220, 220, 220), 1, cv2.LINE_AA)
+                (15, 68), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (220, 220, 220), 1, cv2.LINE_AA)
 
     # Barra de confianza
     barra_x = 15
     barra_y = 80
-    barra_w = int((w - 30) * confianza_corregida)
+    barra_w = int((w - 30) * confianza)
     cv2.rectangle(frame, (barra_x, barra_y), (w - 15, barra_y + 8), (60, 60, 60), -1)
     cv2.rectangle(frame, (barra_x, barra_y), (barra_x + barra_w, barra_y + 8), color, -1)
 
@@ -78,7 +79,7 @@ def dibujar_resultado(frame, confianza_original: float):
 
 
 def main():
-    print("=" * 50)
+    print("=" * 60)
     print("🔌 Cargando modelo ONNX...")
     print("   (esto puede tardar unos segundos)")
     
@@ -99,14 +100,15 @@ def main():
         return
 
     print("✅ Cámara activa")
-    print("\n" + "=" * 50)
-    print("🎯 Detector de Flores - Modo simplificado")
-    print("   • Modelo con corrección automática (inversión de confianza)")
+    print("\n" + "=" * 60)
+    print("🎯 Detector de Flores - Con inversión")
+    print(f"   • Umbral de decisión: {UMBRAL*100:.0f}%")
+    print("   • Inversión activada (modelo aprendió al revés)")
     print("   • Apunta a una flor para probar")
     print("\n⌨️  Controles:")
     print("   Q → Salir")
     print("   S → Guardar captura")
-    print("=" * 50 + "\n")
+    print("=" * 60 + "\n")
 
     while True:
         ret, frame = cap.read()
@@ -119,7 +121,7 @@ def main():
         outputs = session.run([OUTPUT_NAME], {INPUT_NAME: entrada})
         confianza_original = float(outputs[0][0][0])
         
-        # Dibujar resultado (la corrección se hace dentro de la función)
+        # Dibujar resultado (con inversión)
         frame_con_resultado = dibujar_resultado(frame.copy(), confianza_original)
 
         cv2.imshow("Detector de Flores", frame_con_resultado)
