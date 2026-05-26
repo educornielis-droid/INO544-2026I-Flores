@@ -17,13 +17,13 @@
 ---
 
 ## 📊 2. Gestión del Dataset (Ingeniería de Datos)
-* **Cantidad de imágenes originales recopiladas:** 400 (200 flores + 200 no-flores)
+* **Cantidad de imágenes originales recopiladas:** 8000 (4000 flores + 4000 no flores)
 * **Estrategia de Data Augmentation aplicada:** El modelo no aplicó augmentation explícita debiido a que usó las imágenes originales del dataset de TensorFlow (flower_photos) tal como estaban.
     * *Rotación:* [No aplicada] 
     * *Zoom:* [No aplicado]
     * *Cambios de Brillo:* [No aplicados]
     * *Otras transformaciones:* [No aplicadas]
-* **Total de imágenes generadas para el entrenamiento:** [400 (las mismas 400 originales, sin aumentación)]
+* **Total de imágenes generadas para el entrenamiento:** [8000 (las mismas 4000 originales, sin aumentación)]
 * **Resolución y formato estandarizado:** 224x224 píxeles, RGB.
 
 ---
