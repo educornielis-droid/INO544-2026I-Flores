@@ -7,7 +7,7 @@
 ## 👥 Integrantes y Roles
 * **Estudiante 1:** [Eduardo Cornielis] - [30.908.425] - Modelado y Entrenamiento (el que trabajó con el código del modelo)
 * **Estudiante 2:** [Cesar Nucete] - [29.548.403] - Dataset y Preprocesamiento (el que buscó y organizó las imágenes)
-* **Estudiante 3:** [Andrea Melchor] - [31.170.328] - Pruebas (probó el modelo)
+* **Estudiante 3:** [Andrea Melchor] - [31.170.328] - Pruebas y correciones (probó el modelo y corrigió errores)
 
 ---
 
