@@ -58,10 +58,9 @@ Si hubiera sido más baja, el modelo habría tardado demasiado en avanzar.
 ---
 
 ## 📈 4. Métricas de Rendimiento (Testing - 20%)
-* **Precisión final (Accuracy) en la data de test:** [97.87%]
-* **Pérdida final (Loss) en la data de test:** [0.1074]
+* **Precisión final (Accuracy) en la data de test:** [98.56%]
+* **Pérdida final (Loss) en la data de test:** [0.0777]
 
-*(Inserte aquí abajo la captura de pantalla de la gráfica de entrenamiento Accuracy/Loss de su modelo)*
 ![Gráfica de Entrenamiento](src/grafica_rendimiento.png) 
 
 ---
