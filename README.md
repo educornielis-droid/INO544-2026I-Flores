@@ -96,4 +96,4 @@ Para replicar el preprocesamiento y el entrenamiento del modelo:
    python servidor.py
 
 4. Abrir en el navegador
-   http://localhost:5000
+   http://localhost:8080
