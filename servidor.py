@@ -1,6 +1,5 @@
 """
 servidor.py - Servidor web para detector de flores
-
 """
 
 import base64, io, json
@@ -9,15 +8,26 @@ import numpy as np
 from PIL import Image
 import onnxruntime as ort
 import warnings
+import webbrowser
+import threading
+import time
+
 warnings.filterwarnings("ignore")
 
-PUERTO     = 5000
+PUERTO     = 8080
 IMG_SIZE   = 224
 UMBRAL     = 0.5
-MODEL_PATH = "modelo_flores.onnx"
+MODEL_PATH = "model/INO544-2026I-Flores.onnx"
 HTML_FILE  = "interfaz_flores.html"
 INPUT_NAME  = "cam_input"
 OUTPUT_NAME = "confidence_score"
+
+def abrir_navegador():
+    """Abre el navegador después de un pequeño retraso"""
+    time.sleep(1.5)  # Espera a que el servidor esté listo
+    url = f"http://localhost:{PUERTO}"
+    webbrowser.open(url)
+    print(f"   🌐 Navegador abierto en {url}")
 
 print("🔌 Cargando modelo ONNX...")
 session = ort.InferenceSession(MODEL_PATH, providers=['CPUExecutionProvider'])
@@ -103,12 +113,17 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     server = HTTPServer(('localhost', PUERTO), Handler)
+    
     print(f"\n🌸 FloreScope - Servidor activo")
     print(f"   🌐 http://localhost:{PUERTO}")
     print("   • Interfaz con diseño original")
     print("   • Cámara en vivo integrada")
     print("   • Análisis de imágenes por archivo")
-    print("   • Presiona Ctrl+C para detener\n")
+    print("   • Presiona Ctrl+C para detener")
+    
+    # Abrir navegador automáticamente (en un hilo separado)
+    threading.Thread(target=abrir_navegador, daemon=True).start()
+    
     try:
         server.serve_forever()
     except KeyboardInterrupt:

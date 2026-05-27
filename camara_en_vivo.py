@@ -18,7 +18,7 @@ import onnxruntime as ort
 from datetime import datetime
 
 # ── Configuración ─────────────────────────────────────────────────
-MODEL_PATH   = "modelo_flores.onnx"
+MODEL_PATH   = "model/INO544-2026I-Flores.onnx"
 INPUT_NAME   = "cam_input"
 OUTPUT_NAME  = "confidence_score"
 IMG_SIZE     = 224

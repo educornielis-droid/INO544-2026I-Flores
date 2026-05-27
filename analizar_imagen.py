@@ -18,7 +18,7 @@ import onnxruntime as ort
 
 # ── Configuración ─────────────────────────────────────────────────
 IMG_SIZE        = 224
-MODEL_PATH      = "modelo_flores.onnx"
+MODEL_PATH      = "model/INO544-2026I-Flores.onnx"
 INPUT_NAME      = "cam_input"
 OUTPUT_NAME     = "confidence_score"
 UMBRAL          = 0.5

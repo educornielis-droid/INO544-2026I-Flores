@@ -20,7 +20,7 @@ IMG_SIZE = 224
 BATCH_SIZE = 32          # Óptimo para 8000 imágenes
 EPOCHS = 10              # Early stopping detendrá antes si es necesario
 MODEL_H5 = "modelo_flores.h5"
-MODEL_ONNX = "modelo_flores.onnx"
+MODEL_ONNX = "INO544-2026I-Flores.onnx"
 
 #  VERIFICA QUE ESTA RUTA SEA CORRECTA 
 DATASET_PATH = "C:\\Users\\Usuario\\Desktop\\flor" 
